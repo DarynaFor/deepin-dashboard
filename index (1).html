@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep In Growth Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; padding: 20px; }
+  
+  .header { text-align: center; margin-bottom: 30px; }
+  .header h1 { font-size: 28px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header p { color: #8b949e; margin-top: 5px; font-size: 14px; }
+  
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  
+  .metric-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; }
+  .metric-card .value { font-size: 36px; font-weight: 700; margin: 8px 0; }
+  .metric-card .label { font-size: 13px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+  .metric-card .change { font-size: 12px; margin-top: 4px; }
+  .metric-card .change.up { color: #3fb950; }
+  .metric-card .change.neutral { color: #8b949e; }
+  
+  .purple { color: #a78bfa; }
+  .blue { color: #58a6ff; }
+  .green { color: #3fb950; }
+  .orange { color: #f0883e; }
+  .pink { color: #f778ba; }
+  .yellow { color: #d29922; }
+  
+  .section { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .section h2 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  
+  .pipeline { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+  .pipeline-stage { flex: 1; min-width: 140px; background: #0d1117; border-radius: 8px; padding: 16px; text-align: center; }
+  .pipeline-stage .stage-name { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .pipeline-stage .stage-count { font-size: 32px; font-weight: 700; }
+  .pipeline-stage .stage-bar { height: 4px; border-radius: 2px; margin-top: 12px; }
+  
+  .region-list { list-style: none; }
+  .region-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #21262d; }
+  .region-item:last-child { border-bottom: none; }
+  .region-name { display: flex; align-items: center; gap: 10px; }
+  .region-flag { font-size: 20px; }
+  .region-bar-container { width: 120px; height: 6px; background: #21262d; border-radius: 3px; margin: 0 16px; }
+  .region-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #667eea, #764ba2); }
+  .region-stats { font-size: 13px; color: #8b949e; min-width: 100px; text-align: right; }
+  
+  .budget-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #21262d; }
+  .budget-row:last-child { border-bottom: none; }
+  .budget-label { color: #8b949e; }
+  .budget-value { font-weight: 600; }
+  
+  .progress-bar { width: 100%; height: 8px; background: #21262d; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+  
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .status-badge.active { background: #0d2818; color: #3fb950; }
+  .status-badge.building { background: #2a1800; color: #f0883e; }
+  .status-badge.planned { background: #1c1d2e; color: #8b949e; }
+  
+  .system-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+  .system-card { background: #0d1117; border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .system-name { font-size: 14px; font-weight: 600; }
+  .system-desc { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  
+  .last-updated { text-align: center; color: #484f58; font-size: 12px; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚀 Deep In Growth Dashboard</h1>
+  <p>Система просування — реальний час</p>
+</div>
+
+<!-- Key Metrics -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="label">Ціль підписників</div>
+    <div class="value purple">100K</div>
+    <div class="change neutral">0% досягнуто</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Блогерів знайдено</div>
+    <div class="value blue" id="found-count">0</div>
+    <div class="change neutral">скаутинг починається</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Блогерів онбордено</div>
+    <div class="value green">0</div>
+    <div class="change neutral">воронка будується</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Бюджет</div>
+    <div class="value orange">$6,000</div>
+    <div class="change neutral">$0 витрачено</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Прибуток (MRR)</div>
+    <div class="value green">$0</div>
+    <div class="change neutral">до запуску додатку</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Регіонів активно</div>
+    <div class="value pink">0 / 6</div>
+    <div class="change neutral">перший: USA</div>
+  </div>
+</div>
+
+<!-- Influencer Pipeline -->
+<div class="section">
+  <h2>📊 Воронка блогерів</h2>
+  <div class="pipeline">
+    <div class="pipeline-stage">
+      <div class="stage-name">Знайдено</div>
+      <div class="stage-count blue">0</div>
+      <div class="stage-bar" style="background: #58a6ff;"></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Contacted</div>
+      <div class="stage-count yellow">0</div>
+      <div class="stage-bar" style="background: #d29922;"></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Зацікавлені</div>
+      <div class="stage-count orange">0</div>
+      <div class="stage-bar" style="background: #f0883e;"></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Онбордені</div>
+      <div class="stage-count green">0</div>
+      <div class="stage-bar" style="background: #3fb950;"></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Активні</div>
+      <div class="stage-count purple">0</div>
+      <div class="stage-bar" style="background: #a78bfa;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- Regions Progress -->
+  <div class="section">
+    <h2>🌍 Прогрес по регіонах</h2>
+    <ul class="region-list">
+      <li class="region-item">
+        <span class="region-name"><span class="region-flag">🇺🇸</span> USA</span>
+        <div class="region-bar-container"><div class="region-bar" style="width: 0%"></div></div>
+        <span class="region-stats">0 блогерів</span>
+      </li>
+      <li class="region-item">
+        <span class="region-name"><span class="region-flag">🇵🇱</span> Польща</span>
+        <div class="region-bar-container"><div class="region-bar" style="width: 0%"></div></div>
+        <span class="region-stats">0 блогерів</span>
+      </li>
+      <li class="region-item">
+        <span class="region-name"><span class="region-flag">🇩🇪</span> Німеччина</span>
+        <div class="region-bar-container"><div class="region-bar" style="width: 0%"></div></div>
+        <span class="region-stats">0 блогерів</span>
+      </li>
+      <li class="region-item">
+        <span class="region-name"><span class="region-flag">🇨🇿</span> Чехія</span>
+        <div class="region-bar-container"><div class="region-bar" style="width: 0%"></div></div>
+        <span class="region-stats">0 блогерів</span>
+      </li>
+      <li class="region-item">
+        <span class="region-name"><span class="region-flag">🇬🇧</span> UK</span>
+        <div class="region-bar-container"><div class="region-bar" style="width: 0%"></div></div>
+        <span class="region-stats">0 блогерів</span>
+      </li>
+      <li class="region-item">
+        <span class="region-name"><span class="region-flag">🇨🇦</span> Канада</span>
+        <div class="region-bar-container"><div class="region-bar" style="width: 0%"></div></div>
+        <span class="region-stats">0 блогерів</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Budget & Economics -->
+  <div class="section">
+    <h2>💰 Бюджет і економіка</h2>
+    <div class="budget-row">
+      <span class="budget-label">Загальний бюджет</span>
+      <span class="budget-value">$6,000</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Витрачено</span>
+      <span class="budget-value green">$0</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Залишок</span>
+      <span class="budget-value">$6,000</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: 0%; background: linear-gradient(90deg, #3fb950, #f0883e);"></div>
+    </div>
+    <br>
+    <div class="budget-row">
+      <span class="budget-label">Ціна підписки</span>
+      <span class="budget-value">$29/міс</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Дохід після Apple (70%)</span>
+      <span class="budget-value">$20.30</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Комісія блогеру</span>
+      <span class="budget-value orange">-$10.00</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Прибуток / підписник (1й міс)</span>
+      <span class="budget-value green">$10.30</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Прибуток / підписник (2й+ міс)</span>
+      <span class="budget-value green">$20.30</span>
+    </div>
+  </div>
+</div>
+
+<!-- System Status -->
+<div class="section">
+  <h2>🤖 Система агентів</h2>
+  <div class="system-grid">
+    <div class="system-card">
+      <div>
+        <div class="system-name">🔍 Агент-Скаут</div>
+        <div class="system-desc">Пошук і аналіз блогерів</div>
+      </div>
+      <span class="status-badge active">✅ Готовий</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">📧 Агент-Комунікатор</div>
+        <div class="system-desc">Outreach і листування</div>
+      </div>
+      <span class="status-badge building">🔨 В розробці</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🤖 Telegram Тунель-Бот</div>
+        <div class="system-desc">Воронка "закохування"</div>
+      </div>
+      <span class="status-badge planned">📋 Заплановано</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🤝 Бот Підтримки</div>
+        <div class="system-desc">Допомога блогерам</div>
+      </div>
+      <span class="status-badge planned">📋 Заплановано</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">📊 Dashboard</div>
+        <div class="system-desc">Візуалізація прогресу</div>
+      </div>
+      <span class="status-badge active">✅ Активний</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🌐 Спільноти</div>
+        <div class="system-desc">FB/TG групи українців</div>
+      </div>
+      <span class="status-badge planned">📋 Заплановано</span>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Progress -->
+<div class="section">
+  <h2>🎯 Прогрес до цілі: 100,000 платних підписників</h2>
+  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+    <span style="color: #8b949e;">0</span>
+    <span style="color: #8b949e;">100,000</span>
+  </div>
+  <div class="progress-bar" style="height: 20px; border-radius: 10px;">
+    <div class="progress-fill" style="width: 0%; background: linear-gradient(90deg, #667eea, #764ba2, #f778ba); border-radius: 10px;"></div>
+  </div>
+  <p style="text-align: center; margin-top: 12px; color: #8b949e;">Підписників: <strong style="color: #a78bfa;">0</strong> • Очікуваний дохід: <strong style="color: #3fb950;">$0 MRR</strong></p>
+</div>
+
+<div class="last-updated">
+  Останнє оновлення: <span id="update-time"></span>
+</div>
+
+<script>
+  document.getElementById('update-time').textContent = new Date().toLocaleString('uk-UA', { 
+    year: 'numeric', month: 'long', day: 'numeric', 
+    hour: '2-digit', minute: '2-digit' 
+  });
+</script>
+
+</body>
+</html>
