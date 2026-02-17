@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep In Growth Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; }
+
+  /* Navigation */
+  .nav { background: #161b22; border-bottom: 1px solid #30363d; padding: 0 20px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 0; }
+  .nav-brand { font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 14px 20px 14px 0; border-right: 1px solid #30363d; margin-right: 4px; white-space: nowrap; }
+  .nav-tabs { display: flex; gap: 0; overflow-x: auto; }
+  .nav-tab { padding: 14px 20px; font-size: 14px; color: #8b949e; cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; white-space: nowrap; user-select: none; }
+  .nav-tab:hover { color: #e1e4e8; background: rgba(255,255,255,.04); }
+  .nav-tab.active { color: #a78bfa; border-bottom-color: #a78bfa; }
+
+  .page { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  .header { text-align: center; margin-bottom: 30px; }
+  .header h1 { font-size: 28px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header p { color: #8b949e; margin-top: 5px; font-size: 14px; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .metric-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 18px; text-align: center; transition: all .2s; }
+  .metric-card.clickable { cursor: pointer; }
+  .metric-card.clickable:hover { border-color: #a78bfa; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(167,139,250,.15); }
+  .metric-card .value { font-size: 32px; font-weight: 700; margin: 6px 0; }
+  .metric-card .label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+  .metric-card .change { font-size: 11px; margin-top: 4px; }
+  .metric-card .change.up { color: #3fb950; }
+  .metric-card .change.neutral { color: #8b949e; }
+
+  .purple { color: #a78bfa; }
+  .blue { color: #58a6ff; }
+  .green { color: #3fb950; }
+  .orange { color: #f0883e; }
+  .pink { color: #f778ba; }
+  .yellow { color: #d29922; }
+  .red { color: #f85149; }
+
+  .section { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .section h2 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .pipeline { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+  .pipeline-stage { flex: 1; min-width: 120px; background: #0d1117; border-radius: 8px; padding: 14px; text-align: center; }
+  .pipeline-stage .stage-name { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .pipeline-stage .stage-count { font-size: 28px; font-weight: 700; }
+  .pipeline-stage .stage-bar { height: 4px; border-radius: 2px; margin-top: 10px; }
+  .pipeline-arrow { display: flex; align-items: center; color: #30363d; font-size: 20px; }
+
+  .region-list { list-style: none; }
+  .region-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #21262d; }
+  .region-item:last-child { border-bottom: none; }
+  .region-name { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 120px; }
+  .region-flag { font-size: 18px; }
+  .region-bar-container { flex: 1; height: 6px; background: #21262d; border-radius: 3px; margin: 0 12px; }
+  .region-bar { height: 100%; border-radius: 3px; transition: width 0.5s; }
+  .region-stats { font-size: 12px; color: #8b949e; min-width: 90px; text-align: right; }
+
+  .budget-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 14px; }
+  .budget-row:last-child { border-bottom: none; }
+  .budget-label { color: #8b949e; }
+  .budget-value { font-weight: 600; }
+
+  .progress-bar { width: 100%; height: 8px; background: #21262d; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .two-col, .three-col { grid-template-columns: 1fr; } }
+
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .status-badge.active { background: #0d2818; color: #3fb950; }
+  .status-badge.building { background: #2a1800; color: #f0883e; }
+  .status-badge.planned { background: #1c1d2e; color: #8b949e; }
+  .status-badge.priority { background: #2a0d18; color: #f85149; }
+
+  .system-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .system-card { background: #0d1117; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .system-name { font-size: 13px; font-weight: 600; }
+  .system-desc { font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #30363d; }
+  .timeline-item { position: relative; padding-bottom: 16px; }
+  .timeline-item::before { content: ''; position: absolute; left: -20px; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #30363d; background: #0d1117; }
+  .timeline-item.done::before { background: #3fb950; border-color: #3fb950; }
+  .timeline-item.current::before { background: #f0883e; border-color: #f0883e; box-shadow: 0 0 8px rgba(240,136,62,0.5); }
+  .timeline-item.upcoming::before { background: #0d1117; border-color: #30363d; }
+  .timeline-date { font-size: 11px; color: #8b949e; }
+  .timeline-title { font-size: 14px; font-weight: 600; margin: 2px 0; }
+  .timeline-desc { font-size: 12px; color: #8b949e; }
+
+  .creator-class { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #21262d; cursor: pointer; transition: background .15s; border-radius: 6px; padding: 8px; }
+  .creator-class:hover { background: rgba(255,255,255,.03); }
+  .creator-class:last-child { border-bottom: none; }
+  .creator-priority { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .creator-info { flex: 1; }
+  .creator-name { font-size: 13px; font-weight: 600; }
+  .creator-detail { font-size: 11px; color: #8b949e; }
+  .creator-count { font-size: 14px; font-weight: 700; min-width: 30px; text-align: right; }
+
+  .interview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .interview-card { background: #0d1117; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #21262d; }
+  .interview-card .country { font-size: 24px; }
+  .interview-card .count { font-size: 20px; font-weight: 700; margin: 4px 0; }
+  .interview-card .target { font-size: 11px; color: #8b949e; }
+  .interview-card .status-text { font-size: 11px; margin-top: 6px; }
+
+  .highlight-box { background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); border: 1px solid rgba(167,139,250,0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: center; }
+  .highlight-box .emoji { font-size: 36px; }
+  .highlight-box .title { font-size: 18px; font-weight: 700; color: #a78bfa; margin: 8px 0 4px; }
+  .highlight-box .subtitle { font-size: 13px; color: #8b949e; }
+
+  .last-updated { text-align: center; color: #484f58; font-size: 12px; margin-top: 20px; padding-bottom: 20px; }
+
+  /* Bloggers Table */
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: .5px; }
+  .filter-group select { background: #0d1117; color: #e1e4e8; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; font-size: 13px; min-width: 140px; }
+  .filter-group select:focus { outline: none; border-color: #a78bfa; }
+
+  .blog-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .blog-table th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #30363d; color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; position: sticky; top: 0; background: #161b22; }
+  .blog-table td { padding: 10px 8px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+  .blog-table tr:hover td { background: rgba(255,255,255,.02); }
+  .blog-table .priority-cell { width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+  .blog-table .handle { color: #58a6ff; font-size: 12px; }
+  .blog-table .platform-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .platform-instagram { background: rgba(225,48,108,.15); color: #e1306c; }
+  .platform-youtube { background: rgba(255,0,0,.12); color: #ff4444; }
+  .platform-tiktok { background: rgba(0,242,234,.1); color: #00f2ea; }
+  .platform-various { background: rgba(139,148,158,.15); color: #8b949e; }
+
+  .table-container { overflow-x: auto; }
+  .blogger-count { font-size: 13px; color: #8b949e; margin-bottom: 12px; }
+
+  /* Placeholder sections */
+  .placeholder-content { text-align: center; padding: 60px 20px; }
+  .placeholder-content .icon { font-size: 64px; margin-bottom: 16px; }
+  .placeholder-content h3 { font-size: 20px; margin-bottom: 8px; color: #e1e4e8; }
+  .placeholder-content p { color: #8b949e; max-width: 500px; margin: 0 auto 20px; font-size: 14px; line-height: 1.6; }
+  .placeholder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; max-width: 900px; margin-left: auto; margin-right: auto; }
+  .placeholder-card { background: #0d1117; border: 1px dashed #30363d; border-radius: 10px; padding: 20px; text-align: left; }
+  .placeholder-card h4 { font-size: 14px; margin-bottom: 6px; }
+  .placeholder-card p { font-size: 12px; color: #8b949e; text-align: left; margin: 0; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; justify-content: center; align-items: flex-start; padding: 40px 20px; overflow-y: auto; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #161b22; border: 1px solid #30363d; border-radius: 16px; width: 100%; max-width: 1100px; max-height: 85vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #30363d; position: sticky; top: 0; background: #161b22; border-radius: 16px 16px 0 0; z-index: 1; }
+  .modal-header h2 { font-size: 18px; }
+  .modal-close { background: none; border: none; color: #8b949e; font-size: 24px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .modal-close:hover { color: #e1e4e8; background: rgba(255,255,255,.05); }
+  .modal-body { padding: 20px 24px; }
+
+  @media (max-width: 768px) {
+    .nav { flex-wrap: wrap; }
+    .nav-brand { border-right: none; padding-right: 10px; }
+    .nav-tabs { width: 100%; }
+    .nav-tab { padding: 10px 14px; font-size: 13px; }
+    .filters { flex-direction: column; }
+    .blog-table { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-brand">🚀 Deep In Growth</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-page="dashboard">📊 Dashboard</div>
+    <div class="nav-tab" data-page="bloggers">👥 Блогери</div>
+    <div class="nav-tab" data-page="facebook">📘 Facebook Групи</div>
+    <div class="nav-tab" data-page="telegram">✈️ Telegram Групи</div>
+  </div>
+</nav>
+
+<!-- ==================== DASHBOARD PAGE ==================== -->
+<div class="page active" id="page-dashboard">
+
+<div class="header">
+  <h1>🚀 Deep In Growth Dashboard</h1>
+  <p>Система просування — реальний час</p>
+</div>
+
+<div class="highlight-box">
+  <div class="emoji">🎙️🤖</div>
+  <div class="title">AI-Спікер Deep In — Ключова фішка запуску</div>
+  <div class="subtitle">Перший в світі AI-представник стартапу що дає інтерв'ю блогерам</div>
+</div>
+
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="label">Ціль підписників</div>
+    <div class="value purple">100K</div>
+    <div class="change neutral">0% досягнуто</div>
+  </div>
+  <div class="metric-card clickable" onclick="openBloggersModal()">
+    <div class="label">Блогерів в CRM</div>
+    <div class="value blue">15</div>
+    <div class="change up">+15 сьогодні ↗</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Блогерів онбордено</div>
+    <div class="value green">0</div>
+    <div class="change neutral">воронка будується</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">AI інтерв'ю</div>
+    <div class="value pink">0 / 10</div>
+    <div class="change neutral">агент створюється</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Бюджет</div>
+    <div class="value orange">$6,000</div>
+    <div class="change neutral">$0 витрачено</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">MRR</div>
+    <div class="value green">$0</div>
+    <div class="change neutral">до запуску</div>
+  </div>
+</div>
+
+<!-- AI Interview Launch Plan -->
+<div class="section">
+  <h2>🎙️ План запуску AI-інтерв'ю по регіонах</h2>
+  <div class="interview-grid">
+    <div class="interview-card">
+      <div class="country">🇺🇸</div>
+      <div class="count blue">0 / 3</div>
+      <div class="target">USA</div>
+      <div class="status-text orange">пошук блогерів</div>
+    </div>
+    <div class="interview-card">
+      <div class="country">🇨🇦</div>
+      <div class="count blue">0 / 2</div>
+      <div class="target">Канада</div>
+      <div class="status-text orange">пошук блогерів</div>
+    </div>
+    <div class="interview-card">
+      <div class="country">🇵🇱</div>
+      <div class="count blue">0 / 2</div>
+      <div class="target">Польща</div>
+      <div class="status-text orange">пошук блогерів</div>
+    </div>
+    <div class="interview-card">
+      <div class="country">🇩🇪</div>
+      <div class="count blue">0 / 2</div>
+      <div class="target">Німеччина</div>
+      <div class="status-text orange">пошук блогерів</div>
+    </div>
+    <div class="interview-card">
+      <div class="country">🇨🇿</div>
+      <div class="count blue">0 / 1</div>
+      <div class="target">Чехія</div>
+      <div class="status-text orange">пошук блогерів</div>
+    </div>
+  </div>
+</div>
+
+<!-- Influencer Pipeline -->
+<div class="section">
+  <h2>📊 Воронка блогерів</h2>
+  <div class="pipeline">
+    <div class="pipeline-stage">
+      <div class="stage-name">Знайдено</div>
+      <div class="stage-count blue">15</div>
+      <div class="stage-bar" style="background: #58a6ff;"></div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Contacted</div>
+      <div class="stage-count yellow">0</div>
+      <div class="stage-bar" style="background: #d29922;"></div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Зацікавлені</div>
+      <div class="stage-count orange">0</div>
+      <div class="stage-bar" style="background: #f0883e;"></div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Онбордені</div>
+      <div class="stage-count green">0</div>
+      <div class="stage-bar" style="background: #3fb950;"></div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-stage">
+      <div class="stage-name">Активні</div>
+      <div class="stage-count purple">0</div>
+      <div class="stage-bar" style="background: #a78bfa;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- Creator Classification -->
+  <div class="section">
+    <h2>🏷️ Класифікація креаторів</h2>
+    <div class="creator-class" onclick="openBloggersModal('S')">
+      <div class="creator-priority" style="background: #2d1b4e; color: #a78bfa;">S</div>
+      <div class="creator-info">
+        <div class="creator-name">Мовні креатори</div>
+        <div class="creator-detail">Вчителі мов без свого продукту → амбасадори</div>
+      </div>
+      <div class="creator-count purple" id="count-S">0</div>
+    </div>
+    <div class="creator-class" onclick="openBloggersModal('E')">
+      <div class="creator-priority" style="background: #1b2d4e; color: #58a6ff;">E</div>
+      <div class="creator-info">
+        <div class="creator-name">Еміграційні</div>
+        <div class="creator-detail">Підкасти, лайв-блоги про життя емігрантів</div>
+      </div>
+      <div class="creator-count blue" id="count-E">0</div>
+    </div>
+    <div class="creator-class" onclick="openBloggersModal('A')">
+      <div class="creator-priority" style="background: #1b2d1b; color: #3fb950;">A</div>
+      <div class="creator-info">
+        <div class="creator-name">Мікро діаспора</div>
+        <div class="creator-detail">До 30K, живуть за кордоном, контент для емігрантів</div>
+      </div>
+      <div class="creator-count green" id="count-A">0</div>
+    </div>
+    <div class="creator-class" onclick="openBloggersModal('B')">
+      <div class="creator-priority" style="background: #2d2d1b; color: #d29922;">B</div>
+      <div class="creator-info">
+        <div class="creator-name">Середні діаспора</div>
+        <div class="creator-detail">30-100K, за кордоном, контент для діаспори</div>
+      </div>
+      <div class="creator-count yellow" id="count-B">0</div>
+    </div>
+    <div class="creator-class" onclick="openBloggersModal('C')">
+      <div class="creator-priority" style="background: #1c1d2e; color: #8b949e;">C</div>
+      <div class="creator-info">
+        <div class="creator-name">Великі / в Україні</div>
+        <div class="creator-detail">Великі блогери, аудиторія переважно в Україні</div>
+      </div>
+      <div class="creator-count" style="color: #8b949e;" id="count-C">0</div>
+    </div>
+  </div>
+
+  <!-- Budget & Economics -->
+  <div class="section">
+    <h2>💰 Економіка</h2>
+    <div class="budget-row">
+      <span class="budget-label">Підписка</span>
+      <span class="budget-value">$29/міс</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Після Apple (70%)</span>
+      <span class="budget-value">$20.30</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Комісія блогеру</span>
+      <span class="budget-value orange">−$10.00</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label">Referral бонус</span>
+      <span class="budget-value orange">−$2.00</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label" style="font-weight:600; color:#e1e4e8;">Прибуток (1й міс)</span>
+      <span class="budget-value green" style="font-size:16px;">$8.30</span>
+    </div>
+    <div class="budget-row">
+      <span class="budget-label" style="font-weight:600; color:#e1e4e8;">Прибуток (2й+ міс)</span>
+      <span class="budget-value green" style="font-size:16px;">$20.30</span>
+    </div>
+    <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #21262d;">
+      <div class="budget-row">
+        <span class="budget-label">Бюджет маркетинг</span>
+        <span class="budget-value">$6,000</span>
+      </div>
+      <div class="budget-row">
+        <span class="budget-label">Витрачено</span>
+        <span class="budget-value green">$0</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 0%; background: linear-gradient(90deg, #3fb950, #f0883e);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Timeline -->
+<div class="section">
+  <h2>📅 Таймлайн до запуску</h2>
+  <div class="timeline">
+    <div class="timeline-item done">
+      <div class="timeline-date">16 лют 2026</div>
+      <div class="timeline-title">✅ Стратегія та планування</div>
+      <div class="timeline-desc">Growth strategy, класифікація, CRM, dashboard, outreach шаблони</div>
+    </div>
+    <div class="timeline-item current">
+      <div class="timeline-date">Тиждень 1-2</div>
+      <div class="timeline-title">🔨 Побудова системи</div>
+      <div class="timeline-desc">AI-спікер, Modash скаутинг, Telegram тунель-бот, email акаунти</div>
+    </div>
+    <div class="timeline-item upcoming">
+      <div class="timeline-date">Тиждень 3-4</div>
+      <div class="timeline-title">📧 Outreach + AI інтерв'ю</div>
+      <div class="timeline-desc">Контакт з 10 подкастерами, тестові інтерв'ю, масова розсилка</div>
+    </div>
+    <div class="timeline-item upcoming">
+      <div class="timeline-date">Тиждень 5-6</div>
+      <div class="timeline-title">🎬 Запис інтерв'ю</div>
+      <div class="timeline-desc">10 інтерв'ю з AI-спікером, PR-підготовка</div>
+    </div>
+    <div class="timeline-item upcoming">
+      <div class="timeline-date">Запуск додатку</div>
+      <div class="timeline-title">💥 LAUNCH DAY</div>
+      <div class="timeline-desc">Одночасний випуск інтерв'ю + PR-розсилка + реферальна програма</div>
+    </div>
+    <div class="timeline-item upcoming">
+      <div class="timeline-date">Після запуску</div>
+      <div class="timeline-title">📈 Масштабування</div>
+      <div class="timeline-desc">Нові регіони, нові блогери, контент-маркетинг</div>
+    </div>
+  </div>
+</div>
+
+<!-- System Status -->
+<div class="section">
+  <h2>🤖 Система агентів</h2>
+  <div class="system-grid">
+    <div class="system-card">
+      <div>
+        <div class="system-name">🎙️ AI-Спікер (Подкаст)</div>
+        <div class="system-desc">Інтерв'ю з блогерами</div>
+      </div>
+      <span class="status-badge priority">🔥 Пріоритет</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🔍 Агент-Скаут</div>
+        <div class="system-desc">Пошук і аналіз блогерів</div>
+      </div>
+      <span class="status-badge active">✅ Готовий</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">📧 Агент-Комунікатор</div>
+        <div class="system-desc">Outreach і листування</div>
+      </div>
+      <span class="status-badge planned">📋 В планах</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🤖 Telegram Тунель-Бот</div>
+        <div class="system-desc">Воронка "закохування"</div>
+      </div>
+      <span class="status-badge building">🔨 Архітектура</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🤝 Бот Підтримки</div>
+        <div class="system-desc">Допомога блогерам</div>
+      </div>
+      <span class="status-badge planned">📋 В планах</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">📰 PR-агенти</div>
+        <div class="system-desc">Прес-релізи та ЗМІ</div>
+      </div>
+      <span class="status-badge planned">📋 В планах</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">📊 Dashboard</div>
+        <div class="system-desc">Візуалізація прогресу</div>
+      </div>
+      <span class="status-badge active">✅ Активний</span>
+    </div>
+    <div class="system-card">
+      <div>
+        <div class="system-name">🌐 Спільноти</div>
+        <div class="system-desc">FB/TG групи українців</div>
+      </div>
+      <span class="status-badge planned">📋 В планах</span>
+    </div>
+  </div>
+</div>
+
+<!-- Regions Progress -->
+<div class="section">
+  <h2>🌍 Прогрес по регіонах</h2>
+  <ul class="region-list">
+    <li class="region-item">
+      <span class="region-name"><span class="region-flag">🇺🇸</span> USA</span>
+      <div class="region-bar-container"><div class="region-bar" style="width: 15%; background: linear-gradient(90deg, #667eea, #764ba2);"></div></div>
+      <span class="region-stats">8 блогерів</span>
+    </li>
+    <li class="region-item">
+      <span class="region-name"><span class="region-flag">🇵🇱</span> Польща</span>
+      <div class="region-bar-container"><div class="region-bar" style="width: 2%; background: linear-gradient(90deg, #667eea, #764ba2);"></div></div>
+      <span class="region-stats">1 блогер</span>
+    </li>
+    <li class="region-item">
+      <span class="region-name"><span class="region-flag">🇩🇪</span> Німеччина</span>
+      <div class="region-bar-container"><div class="region-bar" style="width: 2%; background: linear-gradient(90deg, #667eea, #764ba2);"></div></div>
+      <span class="region-stats">1 блогер</span>
+    </li>
+    <li class="region-item">
+      <span class="region-name"><span class="region-flag">🇨🇿</span> Чехія</span>
+      <div class="region-bar-container"><div class="region-bar" style="width: 0%;"></div></div>
+      <span class="region-stats">0 блогерів</span>
+    </li>
+    <li class="region-item">
+      <span class="region-name"><span class="region-flag">🇬🇧</span> UK</span>
+      <div class="region-bar-container"><div class="region-bar" style="width: 0%;"></div></div>
+      <span class="region-stats">0 блогерів</span>
+    </li>
+    <li class="region-item">
+      <span class="region-name"><span class="region-flag">🇨🇦</span> Канада</span>
+      <div class="region-bar-container"><div class="region-bar" style="width: 0%;"></div></div>
+      <span class="region-stats">0 блогерів</span>
+    </li>
+  </ul>
+</div>
+
+<!-- Goal Progress -->
+<div class="section">
+  <h2>🎯 Прогрес до цілі: 100,000 платних підписників</h2>
+  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+    <span style="color: #8b949e;">0</span>
+    <span style="color: #8b949e;">100,000</span>
+  </div>
+  <div class="progress-bar" style="height: 20px; border-radius: 10px;">
+    <div class="progress-fill" style="width: 0%; background: linear-gradient(90deg, #667eea, #764ba2, #f778ba); border-radius: 10px;"></div>
+  </div>
+  <p style="text-align: center; margin-top: 12px; color: #8b949e;">Підписників: <strong style="color: #a78bfa;">0</strong> • MRR: <strong style="color: #3fb950;">$0</strong> • Блогерів активних: <strong style="color: #58a6ff;">0</strong></p>
+</div>
+
+<div class="last-updated">
+  Останнє оновлення: <span id="update-time"></span>
+</div>
+
+</div>
+
+<!-- ==================== BLOGGERS PAGE ==================== -->
+<div class="page" id="page-bloggers">
+  <div class="header">
+    <h1>👥 CRM Блогерів</h1>
+    <p>База даних всіх знайдених блогерів та спільнот</p>
+  </div>
+
+  <div class="section">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Пріоритет</label>
+        <select id="filter-priority" onchange="renderBloggersTable()">
+          <option value="">Всі</option>
+          <option value="S">S — Мовні креатори</option>
+          <option value="E">E — Еміграційні</option>
+          <option value="A">A — Мікро діаспора</option>
+          <option value="B">B — Середні діаспора</option>
+          <option value="C">C — Великі / в Україні</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Платформа</label>
+        <select id="filter-platform" onchange="renderBloggersTable()">
+          <option value="">Всі</option>
+          <option value="Instagram">Instagram</option>
+          <option value="YouTube">YouTube</option>
+          <option value="TikTok">TikTok</option>
+          <option value="various">Різні</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Хвиля</label>
+        <select id="filter-wave" onchange="renderBloggersTable()">
+          <option value="">Всі</option>
+          <option value="1">1 хвиля — USA</option>
+          <option value="2">2 хвиля — Польща / Німеччина</option>
+          <option value="3">3 хвиля — Інші</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Регіон</label>
+        <select id="filter-region" onchange="renderBloggersTable()">
+          <option value="">Всі</option>
+        </select>
+      </div>
+    </div>
+    <div class="blogger-count" id="blogger-count"></div>
+    <div class="table-container">
+      <table class="blog-table">
+        <thead>
+          <tr>
+            <th>Пріоритет</th>
+            <th>Ім'я</th>
+            <th>Handle</th>
+            <th>Платформа</th>
+            <th>Підписники</th>
+            <th>ER</th>
+            <th>Ніша</th>
+            <th>Регіон</th>
+            <th>Fit</th>
+            <th>Статус</th>
+            <th>Нотатки</th>
+          </tr>
+        </thead>
+        <tbody id="bloggers-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FACEBOOK GROUPS PAGE ==================== -->
+<div class="page" id="page-facebook">
+  <div class="header">
+    <h1>📘 Facebook Групи</h1>
+    <p>Українські діаспорні спільноти для просування</p>
+  </div>
+
+  <div class="section">
+    <div class="placeholder-content">
+      <div class="icon">📘</div>
+      <h3>Facebook групи українських діаспор</h3>
+      <p>Тут буде база Facebook груп українських спільнот за кордоном для organic-просування Deep In. Групи будуть організовані по країнах та містах.</p>
+      <div class="placeholder-grid">
+        <div class="placeholder-card">
+          <h4>🇺🇸 USA</h4>
+          <p>Українці в Америці, Українці Нью-Йорку, Ukrainian Community USA, Українці в Чикаго...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇵🇱 Польща</h4>
+          <p>Українці в Польщі, Ukraińcy w Warszawie, Українці Вроцлава, Українці Кракова...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇩🇪 Німеччина</h4>
+          <p>Українці в Німеччині, Ukrainer in Berlin, Українці Мюнхена...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇨🇿 Чехія</h4>
+          <p>Українці в Чехії, Ukrajinci v Praze...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇬🇧 UK</h4>
+          <p>Українці в Лондоні, Ukrainian Community UK...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇨🇦 Канада</h4>
+          <p>Українці в Канаді, Ukrainian Canadian Congress...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TELEGRAM GROUPS PAGE ==================== -->
+<div class="page" id="page-telegram">
+  <div class="header">
+    <h1>✈️ Telegram Групи / Канали</h1>
+    <p>Українські діаспорні Telegram-спільноти</p>
+  </div>
+
+  <div class="section">
+    <div class="placeholder-content">
+      <div class="icon">✈️</div>
+      <h3>Telegram групи та канали українських діаспор</h3>
+      <p>Тут буде база Telegram груп та каналів українських спільнот за кордоном. Telegram — основний канал комунікації для українських емігрантів.</p>
+      <div class="placeholder-grid">
+        <div class="placeholder-card">
+          <h4>🇺🇸 USA</h4>
+          <p>Українці в США, U4U спільноти, Українці Нью-Йорку, Українці Каліфорнії...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇵🇱 Польща</h4>
+          <p>Українці в Польщі, Допомога в Варшаві, Робота для українців Польща...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇩🇪 Німеччина</h4>
+          <p>Українці в Берліні, Допомога в Німеччині, Українська громада Мюнхен...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇨🇿 Чехія</h4>
+          <p>Українці в Празі, Робота Чехія, Допомога українцям Чехія...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇬🇧 UK</h4>
+          <p>Українці в Лондоні, Homes for Ukraine, Ukrainian Community UK...</p>
+        </div>
+        <div class="placeholder-card">
+          <h4>🇨🇦 Канада</h4>
+          <p>Українці в Торонто, CUAET спільноти, Ukrainian Community Canada...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL ==================== -->
+<div class="modal-overlay" id="bloggers-modal" onclick="if(event.target===this)closeBloggersModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>👥 Блогери в CRM</h2>
+      <button class="modal-close" onclick="closeBloggersModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="filters">
+        <div class="filter-group">
+          <label>Пріоритет</label>
+          <select id="modal-filter-priority" onchange="renderModalTable()">
+            <option value="">Всі</option>
+            <option value="S">S — Мовні креатори</option>
+            <option value="E">E — Еміграційні</option>
+            <option value="A">A — Мікро діаспора</option>
+            <option value="B">B — Середні діаспора</option>
+            <option value="C">C — Великі / в Україні</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Платформа</label>
+          <select id="modal-filter-platform" onchange="renderModalTable()">
+            <option value="">Всі</option>
+            <option value="Instagram">Instagram</option>
+            <option value="YouTube">YouTube</option>
+            <option value="TikTok">TikTok</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Регіон</label>
+          <select id="modal-filter-region" onchange="renderModalTable()">
+            <option value="">Всі</option>
+          </select>
+        </div>
+      </div>
+      <div class="blogger-count" id="modal-blogger-count"></div>
+      <div class="table-container">
+        <table class="blog-table">
+          <thead>
+            <tr>
+              <th>Пріоритет</th>
+              <th>Ім'я</th>
+              <th>Handle</th>
+              <th>Платформа</th>
+              <th>Підписники</th>
+              <th>Регіон</th>
+              <th>Fit</th>
+              <th>Нотатки</th>
+            </tr>
+          </thead>
+          <tbody id="modal-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== BLOGGER DATA =====
+const bloggers = [
+  {name:"Кристина (УКРАЇНКА В США)",handle:"UC41HbrAdJ7L4znbw9U1hSeQ",platform:"YouTube",followers:null,engagement_rate:null,niche:"immigration/life in USA",language:"Ukrainian",region:"USA",contact_type:"unknown",contact_info:"",fit_score:9,status:"found",notes:"YouTube канал про переїзд та життя в США українською",date_added:"2026-02-16"},
+  {name:"Ukrainians in America",handle:"@ukrainians_in_usa",platform:"Instagram",followers:21000,engagement_rate:null,niche:"diaspora community",language:"Ukrainian",region:"USA",contact_type:"dm",contact_info:"@kanelny",fit_score:8,status:"found",notes:"Спільнота українців в США",date_added:"2026-02-16"},
+  {name:"Українці Нью-Йорку",handle:"@ukrnewyork",platform:"Instagram",followers:30000,engagement_rate:null,niche:"diaspora community",language:"Ukrainian",region:"USA - New York",contact_type:"dm",contact_info:"@kanelny",fit_score:8,status:"found",notes:"Найбільша спільнота українців в NYC",date_added:"2026-02-16"},
+  {name:"Українці в Чикаго",handle:"@ukr_chicago",platform:"Instagram",followers:8926,engagement_rate:null,niche:"diaspora community",language:"Ukrainian",region:"USA - Chicago",contact_type:"dm",contact_info:"",fit_score:7,status:"found",notes:"Спільнота українців в Чикаго",date_added:"2026-02-16"},
+  {name:"Українці в Маямі",handle:"@ukrmiami",platform:"Instagram",followers:8404,engagement_rate:null,niche:"diaspora community",language:"Ukrainian",region:"USA - Miami",contact_type:"dm",contact_info:"@kanelny",fit_score:7,status:"found",notes:"Спільнота українців в Маямі",date_added:"2026-02-16"},
+  {name:"Америка для українців",handle:"@usa.for.ukraine",platform:"Instagram",followers:2725,engagement_rate:null,niche:"immigration/U4U",language:"Ukrainian",region:"USA",contact_type:"dm",contact_info:"",fit_score:6,status:"found",notes:"Імміграція по U4U",date_added:"2026-02-16"},
+  {name:"Українці в Америці",handle:"@ua_in_usa_",platform:"Instagram",followers:null,engagement_rate:null,niche:"diaspora community",language:"Ukrainian",region:"USA",contact_type:"dm",contact_info:"",fit_score:6,status:"found",notes:"Спільнота українців в США",date_added:"2026-02-16"},
+  {name:"Українці в Німеччині",handle:"@_ukrainians_in_germany",platform:"Instagram",followers:3897,engagement_rate:null,niche:"diaspora community",language:"Ukrainian",region:"Germany",contact_type:"dm",contact_info:"",fit_score:7,status:"found",notes:"Спільнота українців в Німеччині",date_added:"2026-02-16"},
+  {name:"LinguaMarina",handle:"LinguaMarina",platform:"YouTube",followers:null,engagement_rate:null,niche:"language learning",language:"Russian/English",region:"USA",contact_type:"email",contact_info:"",fit_score:7,status:"found",notes:"Канал про вивчення англійської",date_added:"2026-02-16"},
+  {name:"CYM USA",handle:"@cymusa",platform:"Instagram",followers:1956,engagement_rate:null,niche:"youth organization",language:"Ukrainian",region:"USA",contact_type:"dm",contact_info:"",fit_score:5,status:"found",notes:"Спілка Української Молоді",date_added:"2026-02-16"},
+  {name:"Olga Ferrara",handle:"@olgaferrara_ny",platform:"Instagram",followers:261000,engagement_rate:"3.5%",niche:"fashion/lifestyle",language:"English/Ukrainian",region:"USA - New York",contact_type:"email",contact_info:"",fit_score:7,status:"found",notes:"261K, fashion/lifestyle NYC",date_added:"2026-02-16"},
+  {name:"Olya Hill",handle:"@livingnotes",platform:"Instagram",followers:611000,engagement_rate:"2.9%",niche:"lifestyle/parenting",language:"English",region:"USA - California",contact_type:"email",contact_info:"",fit_score:6,status:"found",notes:"611K, lifestyle/parenting",date_added:"2026-02-16"},
+  {name:"Olya Mosendz",handle:"@olya_mosendz",platform:"Instagram",followers:null,engagement_rate:null,niche:"beauty/lifestyle",language:"Ukrainian",region:"USA - California",contact_type:"email",contact_info:"",fit_score:6,status:"found",notes:"Beauty/lifestyle, 40% аудиторії з України",date_added:"2026-02-16"},
+  {name:"Кіра Сухобойченко",handle:"",platform:"various",followers:null,engagement_rate:null,niche:"community/activism",language:"Ukrainian",region:"Poland - Warsaw",contact_type:"unknown",contact_info:"",fit_score:7,status:"found",notes:"Номінантка Варшав'янка року-2025",date_added:"2026-02-16"},
+  {name:"Greg Mustreader",handle:"@gregmustreader",platform:"TikTok",followers:null,engagement_rate:null,niche:"podcast/blog",language:"Ukrainian/English",region:"unknown",contact_type:"dm",contact_info:"",fit_score:5,status:"found",notes:"Ukraine blogger, подкаст + блог",date_added:"2026-02-16"}
+];
+
+// ===== AUTO-ASSIGN PRIORITY =====
+function assignPriority(b) {
+  const niche = (b.niche || '').toLowerCase();
+  const f = b.followers;
+  // S: language teachers
+  if (niche.includes('language learning') || niche.includes('мов')) return 'S';
+  // E: immigration / expat / podcast
+  if (niche.includes('immigration') || niche.includes('expat') || niche.includes('podcast') || niche.includes('u4u')) return 'E';
+  // C: 100K+ or audience in Ukraine
+  if (f && f >= 100000) return 'C';
+  // B: 30-100K diaspora
+  if (f && f >= 30000 && f < 100000) return 'B';
+  // A: <30K diaspora abroad
+  return 'A';
+}
+
+bloggers.forEach(b => { b.priority = assignPriority(b); });
+
+// ===== WAVE CLASSIFICATION =====
+function getWave(region) {
+  const r = (region || '').toLowerCase();
+  if (r.includes('usa') || r.includes('america') || r.includes('new york') || r.includes('chicago') || r.includes('miami') || r.includes('california')) return 1;
+  if (r.includes('poland') || r.includes('germany') || r.includes('warsaw')) return 2;
+  return 3;
+}
+
+// ===== PRIORITY COLORS =====
+const priorityColors = {
+  S: {bg:'#2d1b4e',fg:'#a78bfa'},
+  E: {bg:'#1b2d4e',fg:'#58a6ff'},
+  A: {bg:'#1b2d1b',fg:'#3fb950'},
+  B: {bg:'#2d2d1b',fg:'#d29922'},
+  C: {bg:'#1c1d2e',fg:'#8b949e'}
+};
+
+const platformClasses = {
+  Instagram: 'platform-instagram',
+  YouTube: 'platform-youtube',
+  TikTok: 'platform-tiktok',
+  various: 'platform-various'
+};
+
+// ===== POPULATE REGION FILTERS =====
+function populateRegionFilters() {
+  const regions = [...new Set(bloggers.map(b => b.region))].sort();
+  ['filter-region', 'modal-filter-region'].forEach(id => {
+    const sel = document.getElementById(id);
+    regions.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = r;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ===== FILTER BLOGGERS =====
+function filterBloggers(prefix) {
+  const p = document.getElementById(prefix + '-priority')?.value || '';
+  const pl = document.getElementById(prefix + '-platform')?.value || '';
+  const w = document.getElementById(prefix + '-wave')?.value || '';
+  const r = document.getElementById(prefix + '-region')?.value || '';
+  return bloggers.filter(b => {
+    if (p && b.priority !== p) return false;
+    if (pl && b.platform !== pl) return false;
+    if (w && getWave(b.region) !== parseInt(w)) return false;
+    if (r && b.region !== r) return false;
+    return true;
+  });
+}
+
+// ===== RENDER TABLE ROW =====
+function bloggerRow(b, full) {
+  const pc = priorityColors[b.priority] || priorityColors.A;
+  const plc = platformClasses[b.platform] || 'platform-various';
+  const fol = b.followers ? b.followers.toLocaleString() : '—';
+  const er = b.engagement_rate || '—';
+  if (full) {
+    return `<tr>
+      <td><span class="priority-cell" style="background:${pc.bg};color:${pc.fg}">${b.priority}</span></td>
+      <td><strong>${b.name}</strong></td>
+      <td class="handle">${b.handle || '—'}</td>
+      <td><span class="platform-badge ${plc}">${b.platform}</span></td>
+      <td>${fol}</td>
+      <td>${er}</td>
+      <td style="font-size:12px;color:#8b949e">${b.niche}</td>
+      <td>${b.region}</td>
+      <td><strong>${b.fit_score}</strong>/10</td>
+      <td><span class="status-badge building">${b.status}</span></td>
+      <td style="font-size:12px;color:#8b949e;max-width:200px">${b.notes}</td>
+    </tr>`;
+  }
+  return `<tr>
+    <td><span class="priority-cell" style="background:${pc.bg};color:${pc.fg}">${b.priority}</span></td>
+    <td><strong>${b.name}</strong></td>
+    <td class="handle">${b.handle || '—'}</td>
+    <td><span class="platform-badge ${plc}">${b.platform}</span></td>
+    <td>${fol}</td>
+    <td>${b.region}</td>
+    <td><strong>${b.fit_score}</strong>/10</td>
+    <td style="font-size:12px;color:#8b949e;max-width:250px">${b.notes}</td>
+  </tr>`;
+}
+
+// ===== RENDER TABLES =====
+function renderBloggersTable() {
+  const filtered = filterBloggers('filter');
+  document.getElementById('bloggers-tbody').innerHTML = filtered.map(b => bloggerRow(b, true)).join('');
+  document.getElementById('blogger-count').textContent = `Показано: ${filtered.length} з ${bloggers.length} блогерів`;
+}
+
+function renderModalTable() {
+  const filtered = filterBloggers('modal-filter');
+  document.getElementById('modal-tbody').innerHTML = filtered.map(b => bloggerRow(b, false)).join('');
+  document.getElementById('modal-blogger-count').textContent = `Показано: ${filtered.length} з ${bloggers.length}`;
+}
+
+// ===== MODAL =====
+function openBloggersModal(priority) {
+  const modal = document.getElementById('bloggers-modal');
+  if (priority) {
+    document.getElementById('modal-filter-priority').value = priority;
+  } else {
+    document.getElementById('modal-filter-priority').value = '';
+  }
+  document.getElementById('modal-filter-platform').value = '';
+  document.getElementById('modal-filter-region').value = '';
+  renderModalTable();
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBloggersModal() {
+  document.getElementById('bloggers-modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBloggersModal(); });
+
+// ===== NAVIGATION =====
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-' + tab.dataset.page).classList.add('active');
+  });
+});
+
+// ===== UPDATE COUNTS =====
+function updateCounts() {
+  const counts = {S:0, E:0, A:0, B:0, C:0};
+  bloggers.forEach(b => { counts[b.priority] = (counts[b.priority]||0) + 1; });
+  Object.keys(counts).forEach(k => {
+    const el = document.getElementById('count-' + k);
+    if (el) el.textContent = counts[k];
+  });
+}
+
+// ===== INIT =====
+populateRegionFilters();
+renderBloggersTable();
+updateCounts();
+document.getElementById('update-time').textContent = new Date().toLocaleString('uk-UA', {
+  year: 'numeric', month: 'long', day: 'numeric',
+  hour: '2-digit', minute: '2-digit'
+});
+</script>
+
+</body>
+</html>
